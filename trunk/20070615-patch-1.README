@@ -1,15 +1,4 @@
-Patch notes for 20070615-patch-1.diff (21 new xmlrpclib tests)
+Patch note for 20070615-patch-1.diff
 
-- Added two new datetime objects to global dict alist, since different types
-  of dates are handled differently.
-- Added checks that attempts to marshal recursive sequences and dicts raise 
-  a TypeError.
-- Check that attempts to marshal ints outside MININT/MAXINT range raise
-  OverflowError.  
-- Added a test for the helper function 'escape'.
-- Added tests for repr and marshalling/unmarshalling Fault.
-- Added tests for basic behavior of the DateTime class.
-- Added tests for basic behavior of the Binary class.
-- Added simple tests that use the SlowParser for unmarshalling.
-- Added simple "end-to-end" tests against SimpleXMLRPCServer (a single call
-  and a multi-call).
+Added tests for basic behavior of DateTime, Binary, Fault, and SlowParser classes and the escape function. Check that marshalling recursive sequences & dicts raises TypeError. Check that marshalling out-of-range ints raises OverflowError.
+
