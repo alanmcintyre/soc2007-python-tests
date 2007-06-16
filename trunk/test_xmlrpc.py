@@ -1,11 +1,9 @@
 import base64
 import datetime
 import sys
-import threading
 import time
 import unittest
 import xmlrpclib
-import SimpleXMLRPCServer
 from test import test_support
 
 try:
@@ -304,36 +302,11 @@ class SlowParserTestCase(unittest.TestCase):
         parsed = u.close()
         self.assertEqual(parsed[0], d)
 
-class ServerTestCase(unittest.TestCase):
-    def setUp(self):
-        server = SimpleXMLRPCServer.SimpleXMLRPCServer(("localhost", 8000))     
-        self.server = server
-        server.register_multicall_functions()
-        self.server.register_function(pow)
-        self.server_thread = threading.Thread(target=server.handle_request)
-        self.server_thread.start()
-
-    def tearDown(self):
-        self.server.socket.close()
-        self.server_thread = None
-        self.server = None
-
-    def test_simple(self):
-        p = xmlrpclib.ServerProxy('http://localhost:8000') 
-        self.assertEqual(p.pow(6,8), 6**8)
-
-    def test_multicall(self):
-        p = xmlrpclib.ServerProxy('http://localhost:8000') 
-        multi = xmlrpclib.MultiCall(p)
-        multi.pow(3,4)
-        multi.pow(5,6)
-        results = [r for r in multi()]
-        self.assertEqual(results, [3**4, 5**6])
 
 def test_main():
     test_support.run_unittest(XMLRPCTestCase, HelperTestCase, 
             DateTimeTestCase, BinaryTestCase, SlowParserTestCase,
-            FaultTestCase, ServerTestCase)
+            FaultTestCase)
 
 
 if __name__ == "__main__":
