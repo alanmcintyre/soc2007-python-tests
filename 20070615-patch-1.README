@@ -1,4 +1,0 @@
-Patch note for 20070615-patch-1.diff
-
-Added tests for basic behavior of DateTime, Binary, Fault, and SlowParser classes and the escape function. Check that marshalling recursive sequences & dicts raises TypeError. Check that marshalling out-of-range ints raises OverflowError.
-
