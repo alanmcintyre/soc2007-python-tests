@@ -1,9 +1,11 @@
 import base64
 import datetime
 import sys
+import threading
 import time
 import unittest
 import xmlrpclib
+import SimpleXMLRPCServer
 from test import test_support
 
 try:
@@ -20,6 +22,7 @@ alist = [{'astring': 'foo@bar.baz.spam',
           'anotherlist': ['.zyx.41'],
           'abase64': xmlrpclib.Binary("my dog has fleas"),
           'boolean': xmlrpclib.False,
+          'boolean': xmlrpclib.True,
           'unicode': u'\u4000\u6000\u8000',
           u'ukey\u4000': 'regular value',
           'datetime1': xmlrpclib.DateTime('20050210T11:41:23'),
@@ -111,22 +114,22 @@ class XMLRPCTestCase(unittest.TestCase):
         l = [1,2,3]
         t = [3,4,5,l]
         l.append(t)
-        self.assertRaises(TypeError, xmlrpclib.dumps, (l,)) 
+        self.assertRaises(TypeError, xmlrpclib.dumps, (l,))
 
     def test_dump_recursive_dict(self):
         d = {'1':1, '2':1}
         t = {'3':3, 'd':d}
         d['t'] = t
-        self.assertRaises(TypeError, xmlrpclib.dumps, (d,)) 
+        self.assertRaises(TypeError, xmlrpclib.dumps, (d,))
 
     def test_dump_big_int(self):
         if sys.maxint > 2L**31-1:
             self.assertRaises(OverflowError, xmlrpclib.dumps,
-                              (int(2L**34),))   
-    
+                              (int(2L**34),))
+
         xmlrpclib.dumps((xmlrpclib.MAXINT, xmlrpclib.MININT))
-        self.assertRaises(OverflowError, xmlrpclib.dumps, (xmlrpclib.MAXINT+1,)) 
-        self.assertRaises(OverflowError, xmlrpclib.dumps, (xmlrpclib.MININT-1,)) 
+        self.assertRaises(OverflowError, xmlrpclib.dumps, (xmlrpclib.MAXINT+1,))
+        self.assertRaises(OverflowError, xmlrpclib.dumps, (xmlrpclib.MININT-1,))
 
         def dummy_write(s):
             pass
@@ -134,9 +137,8 @@ class XMLRPCTestCase(unittest.TestCase):
         m = xmlrpclib.Marshaller()
         m.dump_int(xmlrpclib.MAXINT, dummy_write)
         m.dump_int(xmlrpclib.MININT, dummy_write)
-        self.assertRaises(OverflowError, m.dump_int, xmlrpclib.MAXINT+1, dummy_write) 
-        self.assertRaises(OverflowError, m.dump_int, xmlrpclib.MININT-1, dummy_write) 
-        
+        self.assertRaises(OverflowError, m.dump_int, xmlrpclib.MAXINT+1, dummy_write)
+        self.assertRaises(OverflowError, m.dump_int, xmlrpclib.MININT-1, dummy_write)
 
     def test_dump_none(self):
         value = alist + [None]
@@ -145,6 +147,24 @@ class XMLRPCTestCase(unittest.TestCase):
         self.assertEquals(value,
                           xmlrpclib.loads(strg)[0][0])
         self.assertRaises(TypeError, xmlrpclib.dumps, (arg1,))
+
+    def test_dump_nodict(self):
+        # try dumping an object with no __dict__ attribute
+        d = object()
+        self.assertRaises(TypeError, xmlrpclib.dumps, (d,))
+
+    def test_dump_subclass(self):
+        # try dumping subclass of a basic type
+        class subclassInt(int):
+            pass
+        d = subclassInt()
+        self.assertRaises(TypeError, xmlrpclib.dumps, (d,))
+
+    def test_dump_badparam(self):
+        # try dumping things that aren't a fault or tuple
+        self.assertRaises(AssertionError, xmlrpclib.dumps, 'spam')
+        self.assertRaises(AssertionError, xmlrpclib.dumps, 1)
+        self.assertRaises(AssertionError, xmlrpclib.dumps, object())
 
     def test_default_encoding_issues(self):
         # SF bug #1115989: wrong decoding in '_stringify'
@@ -210,7 +230,7 @@ class FaultTestCase(unittest.TestCase):
 
         s = xmlrpclib.Marshaller().dumps(f)
         self.assertRaises(xmlrpclib.Fault, xmlrpclib.loads, s)
-        
+
 
 class DateTimeTestCase(unittest.TestCase):
     def test_default(self):
@@ -246,7 +266,7 @@ class DateTimeTestCase(unittest.TestCase):
         # allow for date rollover by checking today's or tomorrow's dates
         dd1 = datetime.datetime.now().date()
         dd2 = dd1 + datetime.timedelta(days=1)
-        vals = (dd1.strftime('%Y%m%dT13:17:19'), 
+        vals = (dd1.strftime('%Y%m%dT13:17:19'),
                 dd2.strftime('%Y%m%dT13:17:19'))
         t = xmlrpclib.DateTime(d)
         self.assertEqual(str(t) in vals, True)
@@ -287,11 +307,12 @@ class BinaryTestCase(unittest.TestCase):
         t2 = xmlrpclib._binary(de)
         self.assertEqual(str(t2), d)
 
+
 class SlowParserTestCase(unittest.TestCase):
     def test_basic(self):
         u = xmlrpclib.Unmarshaller()
         p = xmlrpclib.SlowParser(u)
-        
+
     def test_parse(self):
         d = "I don't like spam!"
         dm = xmlrpclib.Marshaller().dumps([d])
@@ -302,11 +323,169 @@ class SlowParserTestCase(unittest.TestCase):
         parsed = u.close()
         self.assertEqual(parsed[0], d)
 
+    def test_getparser(self):
+        d = "I don't like spam!"
+        dm = xmlrpclib.Marshaller().dumps([d])
+        p,u = xmlrpclib.getparser()
+        p.feed(dm)
+        p.close()
+        parsed = u.close()
+        self.assertEqual(parsed[0], d)
+
+class UnmarshallerTestCase(unittest.TestCase):
+    def test_badresponse(self):
+        #XXX: should add some tests for _marks not being empty
+        u = xmlrpclib.Unmarshaller()
+        self.assertRaises(xmlrpclib.ResponseError, u.close)
+
+    def test_bool(self):
+        dm = '<params>\n<param>\n<value><boolean>0</boolean> \
+                </value>\n</param>\n</params>\n'
+        u = xmlrpclib.Unmarshaller()
+        p = xmlrpclib.SlowParser(u)
+        p.feed(dm)
+        p.close()
+        parsed = u.close()
+        self.assertEqual(parsed, (False,))
+
+    def test_badbool(self):
+        dm = '<params>\n<param>\n<value><boolean>3</boolean> \
+                </value>\n</param>\n</params>\n'
+        u = xmlrpclib.Unmarshaller()
+        p = xmlrpclib.SlowParser(u)
+        self.assertRaises(TypeError, p.feed, dm)
+
+    def test_int(self):
+        dm = '<params>\n<param>\n<value><int>42</int> \
+                </value>\n</param>\n</params>\n'
+        u = xmlrpclib.Unmarshaller()
+        p = xmlrpclib.SlowParser(u)
+        p.feed(dm)
+        p.close()
+        parsed = u.close()
+        self.assertEqual(parsed, (42,))
+
+        dm = '<params>\n<param>\n<value><i4>17</i4> \
+                </value>\n</param>\n</params>\n'
+        u = xmlrpclib.Unmarshaller()
+        p = xmlrpclib.SlowParser(u)
+        p.feed(dm)
+        p.close()
+        parsed = u.close()
+        self.assertEqual(parsed, (17,))
+
+    def test_emptyval(self):
+        dm = '<params>\n<param>\n<value></value>\n</param>\n</params>\n'
+        u = xmlrpclib.Unmarshaller()
+        p = xmlrpclib.SlowParser(u)
+        p.feed(dm)
+        p.close()
+        parsed = u.close()
+        self.assertEqual(parsed, ('',))
+
+def server(evt):
+    serv = SimpleXMLRPCServer.SimpleXMLRPCServer(("localhost", 8000),
+                    logRequests=False, bind_and_activate=False)
+    serv.socket.settimeout(3)
+    serv.server_bind()
+    serv.server_activate()
+    serv.register_introspection_functions()
+    serv.register_multicall_functions()
+    serv.register_function(pow)
+    serv.register_function(lambda x,y: x+y, 'add')
+
+    class TestFunc1:
+        def div(self, x, y):
+            '''This is the div function'''
+            return x // y
+
+    class TestFunc2:
+        def mult(self, x, y):
+            '''This is the div function'''
+            return x * y
+
+        def _methodHelp(method_name):
+            if method_name == 'mult':
+                return 'This is the mult function'
+            return 'No such method %r' % method_name
+
+
+    serv.register_instance(TestFunc1())
+
+    try:
+        serv.handle_request()
+    except socket.timeout:
+        pass
+    finally:
+        serv.socket.close()
+        evt.set()
+
+class ServerTestCase(unittest.TestCase):
+    def setUp(self):
+        self.evt = threading.Event()
+        threading.Thread(target=server, args=(self.evt,)).start()
+        time.sleep(.1)
+
+    def tearDown(self):
+        self.evt.wait()
+
+    def test_baduri(self):
+        # protocols other than http/https should fail
+        self.assertRaises(IOError, xmlrpclib.ServerProxy, 'bogus://localhost:8000')
+
+    def test_simple(self):
+        p = xmlrpclib.ServerProxy('http://localhost:8000')
+        self.assertEqual(p.pow(6,8), 6**8)
+
+    def test_repr(self):
+        p = xmlrpclib.ServerProxy('http://localhost:8000')
+        prep = "<ServerProxy for localhost:8000/RPC2>"
+        self.assertEqual(repr(p), prep)
+
+    def test_missing(self):
+        p = xmlrpclib.ServerProxy('http://localhost:8000')
+        self.assertRaises(xmlrpclib.Fault, p.nonexistent_function, 42)
+
+    def test_methodHelp(self):
+        p = xmlrpclib.ServerProxy('http://localhost:8000')
+        self.assertEqual(p.system.methodHelp('div'),
+                        'This is the div function')
+
+    def test_signatures(self):
+        p = xmlrpclib.ServerProxy('http://localhost:8000')
+        self.assertEqual(p.system.methodSignature('add'),
+                        'signatures not supported')
+
+    def test_multicall(self):
+        p = xmlrpclib.ServerProxy('http://localhost:8000')
+        multi = xmlrpclib.MultiCall(p)
+        self.assertEqual(repr(multi), "<MultiCall at %x>" % id(multi))
+        multi.pow(3,4)
+        multi.pow(5,6)
+        results = [r for r in multi()]
+        self.assertEqual(results, [3**4, 5**6])
+
+    def test_failing_multicall(self):
+        p = xmlrpclib.ServerProxy('http://localhost:8000')
+        multi = xmlrpclib.MultiCall(p)
+        multi.pow(3,4)
+        multi.nonexistent_method(42)
+        self.assertRaises(xmlrpclib.Fault, list, multi())
+
+    def test_introspection(self):
+        p = xmlrpclib.ServerProxy('http://localhost:8000')
+        expect_meths = set(['pow', 'add', 'div',
+                        'system.listMethods',
+                        'system.methodHelp',
+                        'system.methodSignature',
+                        'system.multicall'])
+        self.assertEqual(set(p.system.listMethods()), expect_meths)
+
 
 def test_main():
-    test_support.run_unittest(XMLRPCTestCase, HelperTestCase, 
+    test_support.run_unittest(XMLRPCTestCase, HelperTestCase,
             DateTimeTestCase, BinaryTestCase, SlowParserTestCase,
-            FaultTestCase)
+            FaultTestCase, ServerTestCase, UnmarshallerTestCase)
 
 
 if __name__ == "__main__":
