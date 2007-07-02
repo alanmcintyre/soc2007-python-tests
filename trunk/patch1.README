@@ -1,0 +1,4 @@
+Patch note for patch1.diff
+
+Added tests for basic behavior of DateTime, Binary, and Fault classes and the escape function. Check that marshalling recursive sequences & dicts raises TypeError. Check that marshalling out-of-range ints raises OverflowError.
+
