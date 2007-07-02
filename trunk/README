@@ -7,25 +7,19 @@ the Python standard library by implementing new tests for at least four
 modules with little or no existing coverage.
 
 Results:
-    1 new patch, with 19 new tests in total
+    1 new patch, with 17 new tests in total
 
     Coverage improvement:
         Module                  Original        Final
         ==================      ========        =====
-        xmlrpclib               60%             65%
+        xmlrpclib               60%             64%
 
-Patch #1 (20070615-patch-1.diff): 19 new xmlrpclib tests, 151 new LoC
+Patch #1 (patch1.diff): 17 new xmlrpclib tests, 134 new LoC
 
-    Added tests for basic behavior of DateTime, Binary, Fault, and SlowParser 
-    classes and the escape function. Check that marshalling recursive sequences
-    & dicts raises TypeError. Check that marshalling out-of-range ints raises 
+    Added tests for basic behavior of DateTime, Binary, and Fault classes and
+    the escape function. Check that marshalling recursive sequences & dicts 
+    raises TypeError. Check that marshalling out-of-range ints raises 
     OverflowError.
 
     Status: Pending
 
-Patch #2 (200706??-patch-?.diff): 3 new xmlrpclib tests, ??? new LoC
-
-    Added tests that use xmlrpclib to communicate with a SimpleXMLRPCServer for 
-    simple calls, multicalls, and introspection.
-
-    Status: ???
