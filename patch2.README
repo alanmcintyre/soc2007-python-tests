@@ -1,0 +1,4 @@
+Patch note for patch2.diff
+
+Added test_asyncore.py. Includes tests for helper functions: read, write, _exception, readwrite, closeall, compact_traceback; and for classes dispatcher, dispatcher_with_send, and file_wrapper.
+
