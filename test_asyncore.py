@@ -63,9 +63,9 @@ class capture_server(threading.Thread):
         self.captured = ""
         while 1:
             data = conn.recv(10)
+            self.captured += data
             if '\n' in data:
                 break
-            self.captured = self.captured + data
 
         conn.close()
         sock.close()
@@ -82,7 +82,7 @@ class HelperFunctionTests(unittest.TestCase):
         self.assertRaises(asyncore.ExitNow, asyncore.write, tr1)
         self.assertRaises(asyncore.ExitNow, asyncore._exception, tr1)
 
-        # check that an exception other than ExitNow in the object handler 
+        # check that an exception other than ExitNow in the object handler
         # method causes the handle_error method to get called
         tr2 = crashingdummy()
         asyncore.read(tr2)
@@ -142,10 +142,10 @@ class HelperFunctionTests(unittest.TestCase):
         # check that ExitNow exceptions in the object handler method
         # bubbles all the way up through asyncore readwrite call
         tr1 = exitingdummy()
-        self.assertRaises(asyncore.ExitNow, asyncore.readwrite, tr1, 
+        self.assertRaises(asyncore.ExitNow, asyncore.readwrite, tr1,
                           select.POLLOUT)
 
-        # check that an exception other than ExitNow in the object handler 
+        # check that an exception other than ExitNow in the object handler
         # method causes the handle_error method to get called
         tr2 = crashingdummy()
         asyncore.readwrite(tr2, select.POLLOUT)
@@ -162,7 +162,7 @@ class HelperFunctionTests(unittest.TestCase):
             tr1 = exitingdummy()
             self.assertRaises(asyncore.ExitNow, asyncore.readwrite, tr1, flag)
 
-            # check that an exception other than ExitNow in the object handler 
+            # check that an exception other than ExitNow in the object handler
             # method causes the handle_error method to get called
             tr2 = crashingdummy()
             asyncore.readwrite(tr2, flag)
@@ -176,7 +176,7 @@ class HelperFunctionTests(unittest.TestCase):
 
     def closeall_check(self, usedefault):
         # Check that close_all() closes everything in a given map
-    
+
         l = []
         testmap = {}
         for i in range(10):
@@ -209,13 +209,13 @@ class HelperFunctionTests(unittest.TestCase):
         else:
             self.fail("Expected exception")
 
-        (f, function, line), t, v, info = r 
-        self.assertEqual(os.path.split(f)[-1], 'test_asyncore.py')        
-        self.assertEqual(function, 'test_compact_traceback')        
-        self.assertEqual(t, real_t)        
-        self.assertEqual(v, real_v)        
-        self.assertEqual(info, '[%s|%s|%s]' % (f, function, line))        
-        
+        (f, function, line), t, v, info = r
+        self.assertEqual(os.path.split(f)[-1], 'test_asyncore.py')
+        self.assertEqual(function, 'test_compact_traceback')
+        self.assertEqual(t, real_t)
+        self.assertEqual(v, real_v)
+        self.assertEqual(info, '[%s|%s|%s]' % (f, function, line))
+
 
 class DispatcherTests(unittest.TestCase):
     def test_basic(self):
@@ -289,7 +289,7 @@ class DispatcherTests(unittest.TestCase):
                     'warning: unhandled connect event',
                     'warning: unhandled accept event']
         self.assertEquals(lines, expected)
-   
+
 
 
 class dispatcherwithsend_noread(asyncore.dispatcher_with_send):
@@ -307,9 +307,8 @@ class DispatcherWithSendTests(unittest.TestCase):
         s.start()
         time.sleep(1) # Give server time to initialize
 
-        data = "Suppose there isn't a 16-ton weight?"*100
+        data = "Suppose there isn't a 16-ton weight?"*3
         d = dispatcherwithsend_noread()
-#        d.debug = True
         d.create_socket(socket.AF_INET, socket.SOCK_STREAM)
         d.connect((HOST, PORT))
         d.send(data)
@@ -321,86 +320,42 @@ class DispatcherWithSendTests(unittest.TestCase):
         s.stopit = True
         s.join()
 
-        self.assertEqual(s.captured, data)
+        self.assertEqual(s.captured, data + '\n')
 
 
 class DispatcherWithSendTests_UsePoll(DispatcherWithSendTests):
     usepoll = True
 
 if hasattr(asyncore, 'file_wrapper'):
-    class filedispatcher_client(asyncore.file_dispatcher):
-
-        def __init__(self, fd):
-            asyncore.file_dispatcher.__init__(self, fd)
-            self.r = 0
-            self.buf = ''
-            self._done = False
-
-        def handle_connect(self):
-            pass
-
-        def handle_close(self):
-            self.close()
-
-        def handle_read(self):
-            self.r += 1
-            data = self.recv(1)
-            if data:
-                self.buf += data
-            else:
-                self.close()
-                self._done = True
-
-        def writable(self):
-            return False
-
-        def readable(self):
-            return not self._done
-
-
-    class FileDispatcherTests(unittest.TestCase):
-        def setUp(self):
-            self.d = "They don't stamp animals \"property of the zoo\"!!"
-            file(TESTFN, 'w').write(self.d)
-
-        def tearDown(self):
-            unlink(TESTFN)
-
-        def test_file_dispatcher(self):
-            f = file(TESTFN, 'r')
-            fd = filedispatcher_client(f.fileno())
-            asyncore.loop(count=10)
-            self.assertEqual(fd.buf, self.d[:10])
-      
     class FileWrapperTest(unittest.TestCase):
         def setUp(self):
-            self.d = "And I thought to myself, 'a little fermented curd will do the trick'."
+            self.d = "It's not dead, it's sleeping!"
             file(TESTFN, 'w').write(self.d)
 
         def tearDown(self):
             unlink(TESTFN)
 
         def test_recv(self):
-            fd = os.open(TESTFN, os.O_RDONLY)       
+            fd = os.open(TESTFN, os.O_RDONLY)
             w = asyncore.file_wrapper(fd)
 
             self.assertEqual(w.fd, fd)
             self.assertEqual(w.fileno(), fd)
-            self.assertEqual(w.recv(23), "And I thought to myself")
-            self.assertEqual(w.read(21), ", 'a little fermented")
+            self.assertEqual(w.recv(13), "It's not dead")
+            self.assertEqual(w.read(6), ", it's")
             w.close()
             self.assertRaises(OSError, w.read, 1)
-           
+
         def test_send(self):
             d1 = "Come again?"
             d2 = "I want to buy some cheese."
-            fd = os.open(TESTFN, os.O_WRONLY | os.O_APPEND)       
+            fd = os.open(TESTFN, os.O_WRONLY | os.O_APPEND)
             w = asyncore.file_wrapper(fd)
-           
+
             w.write(d1)
-            w.send(d2)   
+            w.send(d2)
             w.close()
-            self.assertEqual(file(TESTFN).read(), self.d + d1 + d2)        
+            self.assertEqual(file(TESTFN).read(), self.d + d1 + d2)
 
 
 def test_main():
@@ -408,7 +363,6 @@ def test_main():
              DispatcherWithSendTests_UsePoll]
     if hasattr(asyncore, 'file_wrapper'):
         tests.append(FileWrapperTest)
-        tests.append(FileDispatcherTests)
 
     run_unittest(*tests)
 

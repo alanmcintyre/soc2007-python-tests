@@ -1,0 +1,4 @@
+Patch note for patch3.diff
+
+New tests for test_smtplib.py. Includes tests for smtpd.DebuggingServer, and for the reaction of smtplib classes to invalid responses from the SMTP server. 
+
