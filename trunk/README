@@ -7,12 +7,18 @@ the Python standard library by implementing new tests for at least four
 modules with little or no existing coverage.
 
 Results:
-    1 new patch, with 17 new tests in total
+    3 new patches, with ?? new tests in total
 
     Coverage improvement:
         Module                  Original        Final
         ==================      ========        =====
-        xmlrpclib               60%             64%
+        xmlrpclib               60%             
+        SimpleXMLRPCServer      19%             
+        asyncore                42%             
+        asynchat                70%             
+        smtplib                 34%             
+        smtpd                   14%             
+        
 
 Patch #1 (patch1.diff): 17 new xmlrpclib tests, 134 new LoC
 
@@ -22,4 +28,21 @@ Patch #1 (patch1.diff): 17 new xmlrpclib tests, 134 new LoC
     OverflowError.
 
     Status: Pending
+
+Patch #2 (patch2.diff): 14 new asyncore tests, 370 new LoC
+
+    Added test_asyncore.py. Includes tests for helper functions: read, write, 
+    _exception, readwrite, closeall, compact_traceback; and for classes
+    dispatcher, dispatcher_with_send, and file_wrapper.
+
+    Status: Pending
+
+Patch #3 (patch3.diff): ?? new smtplib tests, ?? new LoC
+
+    New tests for test_smtplib.py. Includes tests for smtpd.DebuggingServer, 
+    and for the reaction of smtplib classes to invalid responses from the 
+    SMTP server.
+
+    Status: In progress
+
 
