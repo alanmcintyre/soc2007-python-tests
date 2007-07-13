@@ -22,12 +22,12 @@ Results:
 
 Patch #1 (patch1.diff): 17 new xmlrpclib tests, 134 new LoC
 
-    Added tests for basic behavior of DateTime, Binary, and Fault classes and
-    the escape function. Check that marshalling recursive sequences & dicts 
-    raises TypeError. Check that marshalling out-of-range ints raises 
-    OverflowError.
+    Added tests for basic behavior of DateTime, Binary, and Fault classes
+    and the escape function. Check that marshalling recursive sequences &
+    dicts raises TypeError. Check that marshalling out-of-range ints
+    raises OverflowError [Alan McIntyre - GSoC]
 
-    Status: Pending
+    Status: Committed as revision 56340
 
 Patch #2 (patch2.diff): 14 new asyncore tests, 370 new LoC
 
