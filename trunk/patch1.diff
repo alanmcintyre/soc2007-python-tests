@@ -1,7 +1,5 @@
-Index: Lib/test/test_xmlrpc.py
-===================================================================
---- Lib/test/test_xmlrpc.py	(revision 56149)
-+++ Lib/test/test_xmlrpc.py	(working copy)
+--- python/trunk/Lib/test/test_xmlrpc.py        (original)
++++ python/trunk/Lib/test/test_xmlrpc.py        Fri Jul 13 12:43:44 2007
 @@ -1,5 +1,7 @@
 +import base64
  import datetime
@@ -11,20 +9,20 @@ Index: Lib/test/test_xmlrpc.py
  import xmlrpclib
  from test import test_support
 @@ -25,6 +27,10 @@
-                         (2005, 02, 10, 11, 41, 23, 0, 1, -1)),
-           'datetime3': xmlrpclib.DateTime(
-                         datetime.datetime(2005, 02, 10, 11, 41, 23)),
+                        (2005, 02, 10, 11, 41, 23, 0, 1, -1)),
+          'datetime3': xmlrpclib.DateTime(
+                        datetime.datetime(2005, 02, 10, 11, 41, 23)),
 +          'datetime4': xmlrpclib.DateTime(
 +                        datetime.date(2005, 02, 10)),
 +          'datetime5': xmlrpclib.DateTime(
 +                        datetime.time(11, 41, 23)),
-           }]
- 
+          }]
+
  class XMLRPCTestCase(unittest.TestCase):
 @@ -101,11 +107,37 @@
-     def test_dump_bad_dict(self):
-         self.assertRaises(TypeError, xmlrpclib.dumps, ({(1,2,3): 1},))
- 
+    def test_dump_bad_dict(self):
+        self.assertRaises(TypeError, xmlrpclib.dumps, ({(1,2,3): 1},))
+
 +    def test_dump_recursive_seq(self):
 +        l = [1,2,3]
 +        t = [3,4,5,l]
@@ -37,11 +35,11 @@ Index: Lib/test/test_xmlrpc.py
 +        d['t'] = t
 +        self.assertRaises(TypeError, xmlrpclib.dumps, (d,))
 +
-     def test_dump_big_int(self):
-         if sys.maxint > 2L**31-1:
-             self.assertRaises(OverflowError, xmlrpclib.dumps,
-                               (int(2L**34),))
- 
+    def test_dump_big_int(self):
+        if sys.maxint > 2L**31-1:
+            self.assertRaises(OverflowError, xmlrpclib.dumps,
+                              (int(2L**34),))
+
 +        xmlrpclib.dumps((xmlrpclib.MAXINT, xmlrpclib.MININT))
 +        self.assertRaises(OverflowError, xmlrpclib.dumps, (xmlrpclib.MAXINT+1,))
 +        self.assertRaises(OverflowError, xmlrpclib.dumps, (xmlrpclib.MININT-1,))
@@ -56,13 +54,13 @@ Index: Lib/test/test_xmlrpc.py
 +        self.assertRaises(OverflowError, m.dump_int, xmlrpclib.MININT-1, dummy_write)
 +
 +
-     def test_dump_none(self):
-         value = alist + [None]
-         arg1 = (alist + [None],)
+    def test_dump_none(self):
+        value = alist + [None]
+        arg1 = (alist + [None],)
 @@ -156,8 +188,109 @@
-             self.assertEquals(s, "abc \xc2\x95")
-             self.assertEquals(items, [("def \xc2\x96", "ghi \xc2\x97")])
- 
+            self.assertEquals(s, "abc \xc2\x95")
+            self.assertEquals(items, [("def \xc2\x96", "ghi \xc2\x97")])
+
 +
 +class HelperTestCase(unittest.TestCase):
 +    def test_escape(self):
@@ -94,7 +92,7 @@ Index: Lib/test/test_xmlrpc.py
 +    def test_time(self):
 +        d = 1181399930.036952
 +        t = xmlrpclib.DateTime(d)
-+        self.assertEqual(str(t), '20070609T10:38:50')
++        self.assertEqual(str(t), time.strftime("%Y%m%dT%H:%M:%S", time.localtime(d)))
 +
 +    def test_time_tuple(self):
 +        d = (2007,6,9,10,38,50,5,160,0)
@@ -104,7 +102,7 @@ Index: Lib/test/test_xmlrpc.py
 +    def test_time_struct(self):
 +        d = time.localtime(1181399930.036952)
 +        t = xmlrpclib.DateTime(d)
-+        self.assertEqual(str(t), '20070609T10:38:50')
++        self.assertEqual(str(t),  time.strftime("%Y%m%dT%H:%M:%S", d))
 +
 +    def test_datetime_datetime(self):
 +        d = datetime.datetime(2007,1,2,3,4,5)
@@ -167,6 +165,6 @@ Index: Lib/test/test_xmlrpc.py
 -    test_support.run_unittest(XMLRPCTestCase)
 +    test_support.run_unittest(XMLRPCTestCase, HelperTestCase,
 +            DateTimeTestCase, BinaryTestCase, FaultTestCase)
- 
- 
+
+
  if __name__ == "__main__":
