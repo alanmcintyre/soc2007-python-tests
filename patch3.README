@@ -1,4 +1,4 @@
 Patch note for patch3.diff
 
-New tests for test_smtplib.py. Includes tests for smtpd.DebuggingServer, and for the reaction of smtplib classes to invalid responses from the SMTP server. 
+New tests for basic behavior of smtplib.SMTP and smtpd.DebuggingServer. Change to use global host & port number variables. Modified the 'server' to take a string to send back in order to vary test server responses. Added a test for the reaction of smtplib.SMTP to a non-200 HELO response. 
 
